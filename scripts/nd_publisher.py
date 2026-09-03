@@ -16,7 +16,7 @@ UNSPLASH_KEY   = os.environ.get("UNSPLASH_ACCESS_KEY","")
 NEWS_API_KEY   = os.environ.get("NEWS_API_KEY","")
 AMAZON_TAG     = os.environ.get("AMAZON_AFFILIATE_TAG","najiyadaily-20")
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+client = anthropic.Anthropic(api_key=ANTHROPIC_KEY, max_retries=4)
 
 SUPABASE_HEADERS = {
     "apikey":        SUPABASE_KEY,
@@ -255,13 +255,29 @@ Output ONLY valid JSON:
 "image_query":"editorial news photo 4-5 specific words",
 "body_html":"<p>...</p><h3>...</h3>800+ words HTML"}}"""
 
-    msg  = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=3000,
-        messages=[{"role":"user","content":prompt}]
-    )
-    text = msg.content[0].text.strip()
-    return safe_json_parse(text)
+    # Retry up to 5 times with exponential backoff for 529 overload errors
+    import time as _time
+    last_err = None
+    for attempt in range(5):
+        try:
+            msg = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=3000,
+                messages=[{"role":"user","content":prompt}]
+            )
+            text = msg.content[0].text.strip()
+            return safe_json_parse(text)
+        except Exception as _e:
+            last_err = _e
+            err_str   = str(_e)
+            # Retry on overload (529) or rate limit (429) or connection errors
+            if any(code in err_str for code in ["529","529","overloaded","rate_limit","connection","timeout"]):
+                wait = (2 ** attempt) + 5  # 6s, 7s, 9s, 13s, 21s
+                print(f"Attempt {attempt+1} failed ({err_str[:60]}). Retrying in {wait}s...")
+                _time.sleep(wait)
+                continue
+            raise  # Non-retryable error — raise immediately
+    raise last_err
 
 # ── Write Markdown file ───────────────────────────────────────────
 def write_markdown(article: dict, slug: str, img_url: str, img_credit: str):
