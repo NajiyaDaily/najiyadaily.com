@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy:   #052962;
+    --gold:   #d4af37;
+    --cream:  #faf9f5;
+    --border: #dcdcdc;
+    --ink:    #121212;
+  }
+  html { scroll-behavior: smooth }
+  body { @apply bg-cream text-nd-ink antialiased }
+  ::selection { background: #d4af3740; color: #052962 }
+  ::-webkit-scrollbar { width: 5px }
+  ::-webkit-scrollbar-track { background: #faf9f5 }
+  ::-webkit-scrollbar-thumb { background: #dcdcdc; border-radius: 3px }
+  ::-webkit-scrollbar-thumb:hover { background: #052962 }
+}
+
+@layer components {
+  /* Article body — editorial typography */
+  .nd-article-body { @apply font-body text-[1.08rem] leading-[1.9] text-nd-ink2 }
+  .nd-article-body p  { @apply mb-5 }
+  .nd-article-body h2 { @apply font-serif text-[1.7rem] font-bold text-nd-ink mt-10 mb-4 }
+  .nd-article-body h3 {
+    @apply font-serif text-[1.35rem] font-bold text-nd-ink mt-8 mb-3;
+    border-left: 4px solid #052962; padding-left: 14px;
+  }
+  .nd-article-body strong { @apply text-nd-ink font-semibold }
+  .nd-article-body a { @apply text-navy underline underline-offset-2 }
+  .nd-article-body img { @apply w-full rounded my-6 border border-nd-border }
+  .nd-article-body ul { @apply list-disc ml-5 mb-5 space-y-1 }
+  .nd-article-body ol { @apply list-decimal ml-5 mb-5 space-y-1 }
+  .nd-article-body blockquote {
+    border-left: 5px solid #d4af37;
+    @apply pl-6 py-2 my-8 bg-amber-50 font-body italic text-[1.2rem] text-navy leading-relaxed;
+  }
+
+  /* NajiyaDaily Explains Box */
+  .nd-explains {
+    background: #eef4fc;
+    border-left: 4px solid #052962;
+    @apply rounded-r-lg p-5 my-7;
+  }
+  .nd-explains::before {
+    content: 'NajiyaDaily Explains';
+    @apply block font-sans text-[10px] font-bold tracking-widest uppercase text-navy mb-3 opacity-70;
+  }
+
+  /* Why This Matters Box */
+  .nd-why-matters {
+    background: #fdfbf2;
+    border-left: 4px solid #d4af37;
+    @apply rounded-r-lg p-5 my-7;
+  }
+  .nd-why-matters::before {
+    content: '💡 Why This Matters';
+    @apply block font-sans text-[10px] font-bold tracking-widest uppercase text-amber-800 mb-3;
+  }
+
+  /* What Happens Next */
+  .nd-whats-next {
+    @apply border-t-2 border-b-2 border-nd-border py-5 my-7;
+  }
+  .nd-whats-next::before {
+    content: '📅 What Happens Next';
+    @apply block font-sans text-[10px] font-bold tracking-widest uppercase text-nd-muted mb-4;
+  }
+
+  /* Key Takeaways */
+  .nd-takeaways {
+    background: #f8fafc;
+    border-left: 4px solid #052962;
+    @apply rounded-r-lg p-5 my-7;
+  }
+  .nd-takeaways::before {
+    content: '📌 Key Takeaways';
+    @apply block font-sans text-[10px] font-bold tracking-widest uppercase text-navy mb-3;
+  }
+
+  /* Category badges */
+  .nd-badge {
+    @apply inline-block font-sans text-[10px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-sm;
+  }
+
+  /* Reading progress bar */
+  #nd-progress { @apply fixed top-0 left-0 right-0 h-[3px] z-[9999] }
+  #nd-progress-bar {
+    @apply h-[3px] w-0 transition-all duration-100;
+    background: linear-gradient(90deg, #d4af37, #008080);
+    box-shadow: 0 0 8px rgba(212,175,55,.6);
+  }
+
+  /* Dark mode */
+  .dark body { @apply bg-zinc-900 text-zinc-100 }
+  .dark .nd-article-body { @apply text-zinc-300 }
+  .dark .nd-explains { background: rgba(5,41,98,.15); }
+  .dark .nd-why-matters { background: rgba(212,175,55,.06); }
+}
