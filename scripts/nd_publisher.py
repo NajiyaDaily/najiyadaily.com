@@ -3,20 +3,29 @@ NajiyaDaily Publisher — posts directly to najiyadaily.com
 Generates article via Claude → writes Markdown to /content/
 → registers in Supabase → Netlify auto-deploys
 """
-import os, re, json, time, datetime, requests, anthropic
+import os
+import re
+import json
+import time
+import datetime
+import requests
+import anthropic
 
-SITE_URL       = os.environ["SITE_URL"]
-EDITION        = os.environ.get("EDITION", "morning")
-SUPABASE_URL   = os.environ["SUPABASE_URL"]
-SUPABASE_KEY   = os.environ["SUPABASE_SERVICE_KEY"]
-REVALIDATE     = os.environ["REVALIDATE_SECRET"]
-ANTHROPIC_KEY  = os.environ["ANTHROPIC_API_KEY"]
-PEXELS_KEY     = os.environ.get("PEXELS_API_KEY","")
-UNSPLASH_KEY   = os.environ.get("UNSPLASH_ACCESS_KEY","")
-NEWS_API_KEY   = os.environ.get("NEWS_API_KEY","")
-AMAZON_TAG     = os.environ.get("AMAZON_AFFILIATE_TAG","najiyadaily-20")
+SITE_URL        = os.environ.get("SITE_URL", "https://najiyadaily.com")
+EDITION         = os.environ.get("EDITION", "morning")
+SUPABASE_URL    = os.environ["SUPABASE_URL"]
+SUPABASE_KEY    = os.environ["SUPABASE_SERVICE_KEY"]
+REVALIDATE      = os.environ.get("REVALIDATE_SECRET", "")
+ANTHROPIC_KEY   = os.environ["ANTHROPIC_API_KEY"]
+PEXELS_KEY      = os.environ.get("PEXELS_API_KEY", "")
+UNSPLASH_KEY    = os.environ.get("UNSPLASH_ACCESS_KEY", "")
+NEWS_API_KEY    = os.environ.get("NEWS_API_KEY", "")
+AMAZON_TAG      = os.environ.get("AMAZON_AFFILIATE_TAG", "najiyadaily-20")
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_KEY, max_retries=4)
+# Valid production model identifiers: claude-3-7-sonnet-latest or claude-3-5-sonnet-latest
+CLAUDE_MODEL    = "claude-3-7-sonnet-latest"
+
+client = anthropic.Anthropic(api_key=ANTHROPIC_KEY, max_retries=5)
 
 SUPABASE_HEADERS = {
     "apikey":        SUPABASE_KEY,
@@ -31,13 +40,13 @@ PUBLISH_LOG = "scripts/publish_log.json"
 def load_log():
     try:
         return json.load(open(PUBLISH_LOG)) if os.path.exists(PUBLISH_LOG) else {}
-    except:
+    except Exception:
         return {}
 
 def save_log(log):
     log["images"]    = log.get("images",    [])[-100:]
     log["headlines"] = log.get("headlines", [])[-50:]
-    json.dump(log, open(PUBLISH_LOG,"w"), indent=2)
+    json.dump(log, open(PUBLISH_LOG, "w"), indent=2)
 
 # ── Image fetch ───────────────────────────────────────────────────
 def get_image(query: str, log: dict) -> tuple[str, str]:
@@ -47,11 +56,11 @@ def get_image(query: str, log: dict) -> tuple[str, str]:
         r = requests.get(
             "https://api.unsplash.com/search/photos",
             headers={"Authorization": f"Client-ID {UNSPLASH_KEY}"},
-            params={"query":query,"per_page":5,"orientation":"landscape","content_filter":"high"},
+            params={"query": query, "per_page": 5, "orientation": "landscape", "content_filter": "high"},
             timeout=10
         )
-        results = r.json().get("results",[])
-        used    = log.get("images",[])
+        results = r.json().get("results", [])
+        used    = log.get("images", [])
         photo   = next((p for p in results if p["urls"]["regular"] not in used), results[0] if results else None)
         if not photo:
             return "", ""
@@ -70,115 +79,109 @@ def get_news_topic() -> str:
     try:
         r = requests.get(
             "https://newsapi.org/v2/top-headlines",
-            params={"apiKey":NEWS_API_KEY,"language":"en","pageSize":10},
+            params={"apiKey": NEWS_API_KEY, "language": "en", "pageSize": 10},
             timeout=10
         )
-        articles = r.json().get("articles",[])
+        articles = r.json().get("articles", [])
         if articles:
-            return articles[0].get("title","global news today")
-    except:
+            return articles[0].get("title", "global news today")
+    except Exception:
         pass
     return "global technology innovation 2026"
 
 # ── Slug builder ──────────────────────────────────────────────────
 def make_slug(title: str) -> str:
-    slug = re.sub(r"[^a-z0-9\s-]","", title.lower())
-    slug = re.sub(r"\s+","-", slug.strip())
-    slug = re.sub(r"-+","-", slug)
+    slug = re.sub(r"[^a-z0-9\s-]", "", title.lower())
+    slug = re.sub(r"\s+", "-", slug.strip())
+    slug = re.sub(r"-+", "-", slug)
     ts   = datetime.datetime.now().strftime("%Y%m%d%H%M")
     return f"{slug[:60]}-{ts}"
 
 # ── Word count ────────────────────────────────────────────────────
 def word_count(text: str) -> int:
-    return len(re.sub(r"<[^>]+>"," ",text).split())
+    return len(re.sub(r"<[^>]+>", " ", text).split())
 
-# ── Generate article ──────────────────────────────────────────────
+# ── Edition configurations ────────────────────────────────────────
 EDITION_CONFIG = {
-    "morning":    {"category":"World",     "labels":["World","Morning"],     "time":"8:00 AM"},
-    "travel":     {"category":"Travel",    "labels":["Travel"],              "time":"11:00 AM"},
-    "afternoon":  {"category":"World",     "labels":["World","Afternoon"],   "time":"1:00 PM"},
-    "daily_paws": {"category":"Daily-Paws","labels":["Daily-Paws"],          "time":"3:00 PM"},
-    "evening":    {"category":"World",     "labels":["World","Evening"],     "time":"7:00 PM"},
-    "gadget":     {"category":"Gadgets",   "labels":["Gadgets","Review"],    "time":"manual"},
+    "morning":    {"category": "World",      "labels": ["World", "Morning"],     "time": "8:00 AM"},
+    "travel":     {"category": "Travel",     "labels": ["Travel"],               "time": "11:00 AM"},
+    "afternoon":  {"category": "World",      "labels": ["World", "Afternoon"],   "time": "1:00 PM"},
+    "daily_paws": {"category": "Daily-Paws", "labels": ["Daily-Paws"],           "time": "3:00 PM"},
+    "evening":    {"category": "World",      "labels": ["World", "Evening"],     "time": "7:00 PM"},
+    "gadget":     {"category": "Gadgets",    "labels": ["Gadgets", "Review"],    "time": "manual"},
 }
 
 PAWS_ROTATION = {
-    0:"Dog Spotlight", 1:"Cat Spotlight", 2:"Pet Health",
-    3:"Heroic Tales",  4:"Love & Loss",   5:"Training & Tips", 6:"Pet Travel"
+    0: "Dog Spotlight", 1: "Cat Spotlight", 2: "Pet Health",
+    3: "Heroic Tales",  4: "Love & Loss",   5: "Training & Tips", 6: "Pet Travel"
 }
 
 def safe_json_parse(text: str) -> dict:
     """
     Robustly parse JSON from Claude output.
-    Handles: markdown fences, trailing commas, truncated output,
-    single quotes, unescaped characters.
+    Handles markdown fences, trailing commas, single quotes, and reformats via model fallback if required.
     """
-    import re as _re
+    import ast
 
-    # Strip markdown code fences
     text = text.strip()
-    text = _re.sub(r"^```(?:json)?\s*", "", text)
-    text = _re.sub(r"\s*```\s*$", "", text)
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```\s*$", "", text)
     text = text.strip()
 
-    # Find first { and last } to extract JSON object
     start = text.find("{")
     end   = text.rfind("}")
     if start >= 0 and end >= 0:
         text = text[start:end+1]
 
-    # Remove trailing commas before } or ]
-    text = _re.sub(r",\s*([}\]])", r"\1", text)
+    # Clean potential trailing commas in JSON arrays/objects
+    text = re.sub(r",\s*([}\]])", r"\1", text)
 
-    # Try direct parse first
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    # Try with relaxed parsing — replace single quotes around keys/values
     try:
-        import ast
-        # ast.literal_eval handles single-quoted dicts
         result = ast.literal_eval(text)
         if isinstance(result, dict):
             return result
     except Exception:
         pass
 
-    # Last resort — ask Claude again with explicit JSON instruction
-    log.warning("JSON parse failed, retrying with stricter prompt")
+    # Fallback retry request if malformed
+    print("Warning: Initial JSON parse failed, requesting cleaned format...")
     retry = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=500,
+        model=CLAUDE_MODEL,
+        max_tokens=3000,
         messages=[
-            {"role":"user","content": "Return ONLY a valid JSON object with these keys: "
-             "headline, standfirst, category, labels, explains, why_matters, "
-             "takeaways, whats_next, image_query, body_html. "
-             "No markdown, no explanation, just the JSON."}
+            {
+                "role": "user",
+                "content": f"Return ONLY valid standard JSON (RFC 8259) parsing this object. No commentary, no code fences:\n\n{text}"
+            }
         ]
     )
     retry_text = retry.content[0].text.strip()
-    retry_text = _re.sub(r"^```(?:json)?\s*", "", retry_text)
-    retry_text = _re.sub(r"\s*```\s*$", "", retry_text)
+    retry_text = re.sub(r"^```(?:json)?\s*", "", retry_text)
+    retry_text = re.sub(r"\s*```\s*$", "", retry_text)
+    
     start = retry_text.find("{")
     end   = retry_text.rfind("}")
     if start >= 0 and end >= 0:
         retry_text = retry_text[start:end+1]
-    retry_text = _re.sub(r",\s*([}\]])", r"\1", retry_text)
+        
+    retry_text = re.sub(r",\s*([}\]])", r"\1", retry_text)
     return json.loads(retry_text)
 
 
-
 def generate_article(edition: str, topic: str, log: dict) -> dict:
-    cfg  = EDITION_CONFIG[edition]
+    cfg   = EDITION_CONFIG.get(edition, EDITION_CONFIG["morning"])
     today = datetime.datetime.now().strftime("%B %d, %Y")
     recent_headlines = log.get("headlines", [])[-10:]
     avoid = "\n".join(f"- {h}" for h in recent_headlines) if recent_headlines else "None yet."
 
     if edition == "daily_paws":
-        dow    = datetime.datetime.now().weekday()
-        ptype  = PAWS_ROTATION.get(dow, "Dog Spotlight")
+        dow   = datetime.datetime.now().weekday()
+        ptype = PAWS_ROTATION.get(dow, "Dog Spotlight")
         prompt = f"""You are the warm, passionate writer behind NajiyaDaily's Daily Paws.
 Today is {today}. Write a Daily Paws article: {ptype}
 
@@ -255,92 +258,91 @@ Output ONLY valid JSON:
 "image_query":"editorial news photo 4-5 specific words",
 "body_html":"<p>...</p><h3>...</h3>800+ words HTML"}}"""
 
-    # Retry up to 5 times with exponential backoff for 529 overload errors
-    import time as _time
+    # Retry up to 5 times with backoff for 529 overload / 429 rate limit
     last_err = None
     for attempt in range(5):
         try:
             msg = client.messages.create(
-                model="claude-sonnet-4-6",
+                model=CLAUDE_MODEL,
                 max_tokens=3000,
-                messages=[{"role":"user","content":prompt}]
+                messages=[{"role": "user", "content": prompt}]
             )
             text = msg.content[0].text.strip()
             return safe_json_parse(text)
-        except Exception as _e:
-            last_err = _e
-            err_str   = str(_e)
-            # Retry on overload (529) or rate limit (429) or connection errors
-            if any(code in err_str for code in ["529","529","overloaded","rate_limit","connection","timeout"]):
-                wait = (2 ** attempt) + 5  # 6s, 7s, 9s, 13s, 21s
-                print(f"Attempt {attempt+1} failed ({err_str[:60]}). Retrying in {wait}s...")
-                _time.sleep(wait)
+        except Exception as e:
+            last_err = e
+            err_str = str(e).lower()
+            if any(term in err_str for term in ["529", "overloaded", "rate_limit", "429", "connection", "timeout"]):
+                wait = (2 ** attempt) * 4 + 5  # 9s, 13s, 21s, 37s, 69s
+                print(f"Attempt {attempt + 1} failed ({str(e)[:60]}). Retrying in {wait}s...")
+                time.sleep(wait)
                 continue
-            raise  # Non-retryable error — raise immediately
+            raise e
     raise last_err
 
 # ── Write Markdown file ───────────────────────────────────────────
 def write_markdown(article: dict, slug: str, img_url: str, img_credit: str):
-    cat_dir = "content/" + article["category"].lower().replace("-","")
+    cat_dir = os.path.join("content", article["category"].lower().replace("-", ""))
     os.makedirs(cat_dir, exist_ok=True)
 
-    # Pre-escape values — no backslashes inside f-strings
-    title      = article.get("headline","").replace('"', '\"')
-    standfirst = article.get("standfirst","").replace('"', '\"')
-    category   = article["category"]
-    labels_str = ", ".join('"' + l + '"' for l in article.get("labels",[]))
-    explains   = article.get("explains","").replace('"', '\"')[:300]
-    why        = article.get("why_matters","").replace('"', '\"')[:200]
-    published  = datetime.datetime.utcnow().isoformat() + "Z"
-    body       = article.get("body_html","")
+    # Escape double quotes safely for YAML frontmatter
+    def yaml_escape(val: str) -> str:
+        return val.replace('\\', '\\\\').replace('"', r'\"')
 
-    takeaways_lines = "\n".join('  - "' + t.replace('"','\"') + '"'
-                                  for t in article.get("takeaways",[]))
-    next_lines      = "\n".join('  - "' + w.replace('"','\"') + '"'
-                                  for w in article.get("whats_next",[]))
+    title      = yaml_escape(article.get("headline", ""))
+    standfirst = yaml_escape(article.get("standfirst", ""))
+    category   = article["category"]
+    labels_str = ", ".join('"' + yaml_escape(l) + '"' for l in article.get("labels", []))
+    explains   = yaml_escape(article.get("explains", "")[:300])
+    why        = yaml_escape(article.get("why_matters", "")[:200])
+    published  = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    body       = article.get("body_html", "")
+
+    takeaways_lines = "\n".join('  - "' + yaml_escape(t) + '"' for t in article.get("takeaways", []))
+    next_lines      = "\n".join('  - "' + yaml_escape(w) + '"' for w in article.get("whats_next", []))
 
     fm = (
         "---\n"
-        + 'title: "' + title + '"\n'
-        + 'standfirst: "' + standfirst + '"\n'
-        + 'category: "' + category + '"\n'
-        + 'labels: [' + labels_str + ']\n'
-        + 'slug: "' + slug + '"\n'
-        + 'featured_image: "' + img_url + '"\n'
-        + 'image_credit: "' + img_credit + '"\n'
-        + 'published_at: "' + published + '"\n'
-        + 'explains: "' + explains + '"\n'
-        + 'why_matters: "' + why + '"\n'
-        + 'takeaways:\n' + takeaways_lines + '\n'
-        + 'whats_next:\n' + next_lines + '\n'
-        + "---\n\n"
-        + body
+        f'title: "{title}"\n'
+        f'standfirst: "{standfirst}"\n'
+        f'category: "{category}"\n'
+        f'labels: [{labels_str}]\n'
+        f'slug: "{slug}"\n'
+        f'featured_image: "{img_url}"\n'
+        f'image_credit: "{yaml_escape(img_credit)}"\n'
+        f'published_at: "{published}"\n'
+        f'explains: "{explains}"\n'
+        f'why_matters: "{why}"\n'
+        f'takeaways:\n{takeaways_lines}\n'
+        f'whats_next:\n{next_lines}\n'
+        "---\n\n"
+        f"{body}\n"
     )
 
-    path = cat_dir + "/" + slug + ".md"
-    open(path, "w", encoding="utf-8").write(fm)
-    print("Markdown written: " + path)
+    path = os.path.join(cat_dir, f"{slug}.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(fm)
+    print(f"Markdown written: {path}")
     return path
-
 
 # ── Register in Supabase ──────────────────────────────────────────
 def register_supabase(article: dict, slug: str, img_url: str, img_credit: str, wc: int):
     body = {
-        "slug":          slug,
-        "title":         article["headline"],
-        "standfirst":    article.get("standfirst",""),
-        "category":      article["category"],
-        "labels":        article["labels"],
-        "status":        "draft",   # Admin reviews before publishing
+        "slug":           slug,
+        "title":          article["headline"],
+        "standfirst":     article.get("standfirst", ""),
+        "category":       article["category"],
+        "labels":         article.get("labels", []),
+        "status":         "draft",   # Admin reviews before publishing
         "featured_image": img_url or None,
-        "image_credit":  img_credit or None,
-        "word_count":    wc,
-        "read_time":     max(1, wc // 200),
-        "excerpt":       re.sub(r"<[^>]+>"," ",article.get("body_html",""))[:220].strip(),
-        "explains":      article.get("explains",""),
-        "why_matters":   article.get("why_matters",""),
-        "takeaways":     article.get("takeaways",[]),
-        "whats_next":    article.get("whats_next",[]),
+        "image_credit":   img_credit or None,
+        "word_count":     wc,
+        "read_time":      max(1, wc // 200),
+        "excerpt":        re.sub(r"<[^>]+>", " ", article.get("body_html", ""))[:220].strip(),
+        "explains":       article.get("explains", ""),
+        "why_matters":    article.get("why_matters", ""),
+        "takeaways":      article.get("takeaways", []),
+        "whats_next":     article.get("whats_next", []),
     }
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/articles",
@@ -356,28 +358,28 @@ def register_supabase(article: dict, slug: str, img_url: str, img_credit: str, w
 # ── Main ──────────────────────────────────────────────────────────
 def main():
     log   = load_log()
-    topic = get_news_topic() if EDITION not in ("travel","daily_paws") else EDITION
+    topic = get_news_topic() if EDITION not in ("travel", "daily_paws") else EDITION
 
     print(f"Generating {EDITION} edition...")
     article = generate_article(EDITION, topic, log)
     slug    = make_slug(article["headline"])
-    wc      = word_count(article.get("body_html",""))
+    wc      = word_count(article.get("body_html", ""))
 
-    print(f"Fetching image for: {article.get('image_query','')}")
-    img_url, img_credit = get_image(article.get("image_query","editorial news"), log)
+    print(f"Fetching image for: {article.get('image_query', '')}")
+    img_url, img_credit = get_image(article.get("image_query", "editorial news"), log)
 
     write_markdown(article, slug, img_url, img_credit)
     register_supabase(article, slug, img_url, img_credit, wc)
 
     # Update log
-    log.setdefault("headlines",[]).append(article["headline"])
+    log.setdefault("headlines", []).append(article["headline"])
     if img_url:
-        log.setdefault("images",[]).append(img_url)
+        log.setdefault("images", []).append(img_url)
     save_log(log)
 
     print(f"Done. Article: {article['headline']}")
     print(f"Slug: {slug}")
-    print(f"Status: draft — review in admin dashboard before publishing")
+    print("Status: draft — review in admin dashboard before publishing")
 
 if __name__ == "__main__":
     main()
