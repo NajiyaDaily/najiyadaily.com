@@ -204,33 +204,47 @@ Output ONLY valid JSON:
 
 # ── Write Markdown file ───────────────────────────────────────────
 def write_markdown(article: dict, slug: str, img_url: str, img_credit: str):
-    cat_dir = f"content/{article['category'].lower().replace('-','')}"
+    cat_dir = "content/" + article["category"].lower().replace("-","")
     os.makedirs(cat_dir, exist_ok=True)
-    labels_yaml = ", ".join(f'"{l}"' for l in article["labels"])
-    takeaways_yaml = "\n".join(f'  - "{t}"' for t in article.get("takeaways",[]))
-    next_yaml  = "\n".join(f'  - "{w}"' for w in article.get("whats_next",[]))
-    fm = f"""---
-title: "{article['headline'].replace('"', '\\"')}"
-standfirst: "{article.get('standfirst','').replace('"', '\\"')}"
-category: "{article['category']}"
-labels: [{labels_yaml}]
-slug: "{slug}"
-featured_image: "{img_url}"
-image_credit: "{img_credit}"
-published_at: "{datetime.datetime.utcnow().isoformat()}Z"
-explains: "{article.get('explains','').replace('"', '\\"')[:300]}"
-why_matters: "{article.get('why_matters','').replace('"', '\\"')[:200]}"
-takeaways:
-{takeaways_yaml}
-whats_next:
-{next_yaml}
----
 
-{article.get('body_html','')}"""
-    path = f"{cat_dir}/{slug}.md"
-    open(path,"w",encoding="utf-8").write(fm)
-    print(f"Markdown written: {path}")
+    # Pre-escape values — no backslashes inside f-strings
+    title      = article.get("headline","").replace('"', '\"')
+    standfirst = article.get("standfirst","").replace('"', '\"')
+    category   = article["category"]
+    labels_str = ", ".join('"' + l + '"' for l in article.get("labels",[]))
+    explains   = article.get("explains","").replace('"', '\"')[:300]
+    why        = article.get("why_matters","").replace('"', '\"')[:200]
+    published  = datetime.datetime.utcnow().isoformat() + "Z"
+    body       = article.get("body_html","")
+
+    takeaways_lines = "\n".join('  - "' + t.replace('"','\"') + '"'
+                                  for t in article.get("takeaways",[]))
+    next_lines      = "\n".join('  - "' + w.replace('"','\"') + '"'
+                                  for w in article.get("whats_next",[]))
+
+    fm = (
+        "---\n"
+        + 'title: "' + title + '"\n'
+        + 'standfirst: "' + standfirst + '"\n'
+        + 'category: "' + category + '"\n'
+        + 'labels: [' + labels_str + ']\n'
+        + 'slug: "' + slug + '"\n'
+        + 'featured_image: "' + img_url + '"\n'
+        + 'image_credit: "' + img_credit + '"\n'
+        + 'published_at: "' + published + '"\n'
+        + 'explains: "' + explains + '"\n'
+        + 'why_matters: "' + why + '"\n'
+        + 'takeaways:\n' + takeaways_lines + '\n'
+        + 'whats_next:\n' + next_lines + '\n'
+        + "---\n\n"
+        + body
+    )
+
+    path = cat_dir + "/" + slug + ".md"
+    open(path, "w", encoding="utf-8").write(fm)
+    print("Markdown written: " + path)
     return path
+
 
 # ── Register in Supabase ──────────────────────────────────────────
 def register_supabase(article: dict, slug: str, img_url: str, img_credit: str, wc: int):
