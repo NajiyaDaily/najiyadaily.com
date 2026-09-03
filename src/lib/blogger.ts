@@ -27,8 +27,8 @@ export function extractFeaturedImage(content: string): string | null {
 
 export function extractSnippet(content: string, max = 220): string {
   const clean = content
-    .replace(/<script[^>]*>.*?<\/script>/gis, "")
-    .replace(/<style[^>]*>.*?<\/style>/gis, "")
+    .replace(/<script[^>]*>.*?<\/script>/gi, "")
+    .replace(/<style[^>]*>.*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
