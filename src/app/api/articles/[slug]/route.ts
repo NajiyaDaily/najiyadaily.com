@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache";
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = req.headers.get("x-publish-secret")
-               ?? req.headers.get("x-admin-secret");
+               || req.headers.get("x-admin-secret");
   return secret === process.env.REVALIDATE_SECRET
       || secret === process.env.ADMIN_SECRET;
 }
 
-type Props = { params: { slug: string } };
-
-export async function GET(_req: NextRequest, { params }: Props) {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { slug: string } }
+) {
   const { data, error } = await supabaseAdmin
     .from("articles")
     .select("*")
@@ -21,7 +22,10 @@ export async function GET(_req: NextRequest, { params }: Props) {
   return NextResponse.json({ article: data });
 }
 
-export async function PATCH(req: NextRequest, { params }: Props) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { slug: string } }
+) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -41,7 +45,10 @@ export async function PATCH(req: NextRequest, { params }: Props) {
   return NextResponse.json({ article: data });
 }
 
-export async function DELETE(req: NextRequest, { params }: Props) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { slug: string } }
+) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

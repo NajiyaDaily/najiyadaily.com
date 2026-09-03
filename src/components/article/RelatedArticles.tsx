@@ -4,12 +4,16 @@ import { supabase } from "@/lib/supabase";
 import { getCategoryMeta } from "@/lib/categories";
 
 export async function RelatedArticles({
-  currentSlug, category
-}: { currentSlug: string; category: string }) {
+  currentSlug,
+  category,
+}: {
+  currentSlug: string;
+  category: string;
+}) {
   const { data } = await supabase
     .from("articles")
-    .select("id,slug,title,featured_image,category,labels,published_at")
-    .eq("status","published")
+    .select("id, slug, title, featured_image, category, labels, published_at")
+    .eq("status", "published")
     .eq("category", category)
     .neq("slug", currentSlug)
     .order("published_at", { ascending: false })
@@ -18,30 +22,39 @@ export async function RelatedArticles({
   if (!data || data.length === 0) return null;
 
   return (
-    <section className="border-t-2 border-navy px-5 md:px-8 py-8 max-w-[800px] mx-auto">
-      <h2 className="font-sans text-[11px] font-bold tracking-[2px] uppercase text-nd-muted mb-5">
-        Keep Reading
+    <section style={{ borderTop: "2px solid #052962", padding: "20px", marginTop: 0 }}>
+      <h2 style={{ fontFamily: "sans-serif", fontSize: "11px", fontWeight: 500,
+                   letterSpacing: "2px", textTransform: "uppercase", color: "#707070",
+                   marginBottom: "16px" }}>
+        Keep reading
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "14px" }}>
         {data.map((p) => {
           const meta = getCategoryMeta(p.category);
           return (
             <Link key={p.id} href={`/posts/${p.slug}`}
-              className="group border border-nd-border rounded-md overflow-hidden
-                         hover:border-navy hover:-translate-y-0.5 transition-all bg-white">
+              style={{ border: "1px solid #dcdcdc", borderRadius: "4px",
+                       overflow: "hidden", display: "block", textDecoration: "none",
+                       background: "#fff" }}>
               {p.featured_image ? (
-                <div className="relative h-[110px]">
-                  <Image src={p.featured_image} alt={p.title}
-                    fill className="object-cover" sizes="200px" unoptimized/>
+                <div style={{ position: "relative", height: "110px" }}>
+                  <Image src={p.featured_image} alt={p.title} fill
+                    style={{ objectFit: "cover" }} sizes="200px" unoptimized />
                 </div>
-              ) : <div className="h-[110px] bg-paper"/>}
-              <div className="p-3">
-                <span className="font-sans text-[9px] font-bold uppercase tracking-wide"
-                      style={{ color: meta.color }}>{meta.label}</span>
-                <h3 className="font-serif text-[0.88rem] font-bold leading-snug text-nd-ink
-                               group-hover:text-navy transition-colors mt-1 line-clamp-3">
+              ) : (
+                <div style={{ height: "110px", background: "#f4f3ef" }} />
+              )}
+              <div style={{ padding: "10px 12px" }}>
+                <span style={{ fontFamily: "sans-serif", fontSize: "9px", fontWeight: 700,
+                               textTransform: "uppercase", letterSpacing: "1px",
+                               color: meta.color, display: "block", marginBottom: "4px" }}>
+                  {meta.label}
+                </span>
+                <span style={{ fontFamily: "Georgia, serif", fontSize: "13px",
+                               fontWeight: 700, color: "#111118", lineHeight: 1.25,
+                               display: "block" }}>
                   {p.title}
-                </h3>
+                </span>
               </div>
             </Link>
           );

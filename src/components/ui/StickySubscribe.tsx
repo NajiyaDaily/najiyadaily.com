@@ -2,40 +2,46 @@
 import { useEffect, useState } from "react";
 export function StickySubscribe() {
   const [visible, setVisible] = useState(false);
-  const [closed,  setClosed]  = useState(false);
-  useEffect(() => {
-    if (sessionStorage.getItem("nd-sub-closed")) { setClosed(true); return; }
-    const onScroll = () => {
+  const [closed, setClosed]   = useState(false);
+  useEffect(function() {
+    try { if (sessionStorage.getItem("nd-sub-closed")) { setClosed(true); return; } } catch(e) {}
+    function onScroll() {
       const s = document.documentElement.scrollTop;
       const h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       if (h > 0 && s / h > 0.4) setVisible(true);
-    };
+    }
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return function() { window.removeEventListener("scroll", onScroll); };
   }, []);
-  const dismiss = () => {
+  function dismiss() {
     setClosed(true);
-    sessionStorage.setItem("nd-sub-closed", "1");
-  };
+    try { sessionStorage.setItem("nd-sub-closed", "1"); } catch(e) {}
+  }
   if (closed || !visible) return null;
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#041f4a] border-t-2 border-gold
-                    px-5 py-3 flex flex-wrap items-center justify-between gap-3
-                    animate-[slideUp_.3s_ease]">
-      <p className="font-sans text-[13px] text-white/80">
-        <strong className="text-white">Never miss a story.</strong> Get NajiyaDaily delivered free.
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+                  background: "#041f4a", borderTop: "2px solid #d4af37",
+                  padding: "12px 20px", display: "flex", alignItems: "center",
+                  justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+      <p style={{ fontFamily: "sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.8)" }}>
+        <strong style={{ color: "#fff" }}>Never miss a story.</strong> Get NajiyaDaily free.
       </p>
-      <div className="flex gap-2 items-center">
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <input type="email" placeholder="your@email.com"
-          className="border border-white/25 bg-white/10 text-white placeholder-white/40
-                     font-sans text-[13px] px-3 py-2 rounded-sm outline-none w-48" />
-        <button
-          onClick={() => window.open("https://feedburner.google.com/fb/a/mailverify?uri=NajiyaDaily&loc=en_US","_blank")}
-          className="bg-gold text-navy font-sans text-[12px] font-bold px-4 py-2 rounded-sm
-                     hover:opacity-90 transition-opacity whitespace-nowrap">
-          Subscribe Free
+          style={{ border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)",
+                   color: "#fff", fontFamily: "sans-serif", fontSize: "12px",
+                   padding: "7px 10px", borderRadius: "3px", width: "180px" }} />
+        <button onClick={function() { window.open("https://feedburner.google.com/fb/a/mailverify?uri=NajiyaDaily&loc=en_US","_blank"); }}
+          style={{ background: "#d4af37", color: "#052962", fontFamily: "sans-serif",
+                   fontSize: "11px", fontWeight: 500, border: "none", borderRadius: "3px",
+                   padding: "7px 14px", cursor: "pointer" }}>
+          Subscribe
         </button>
-        <button onClick={dismiss} className="text-white/40 hover:text-white text-xl leading-none px-1">×</button>
+        <button onClick={dismiss}
+          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)",
+                   fontSize: "20px", cursor: "pointer", padding: "0 4px" }}>
+          x
+        </button>
       </div>
     </div>
   );

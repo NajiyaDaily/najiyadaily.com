@@ -3,27 +3,31 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 export function CookieNotice() {
   const [show, setShow] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (!localStorage.getItem("nd-cookie")) setShow(true);
+  useEffect(function() {
+    const t = setTimeout(function() {
+      try { if (!localStorage.getItem("nd-cookie")) setShow(true); } catch(e) {}
     }, 2500);
-    return () => clearTimeout(t);
+    return function() { clearTimeout(t); };
   }, []);
-  const accept = () => {
-    localStorage.setItem("nd-cookie", "1");
+  function accept() {
+    try { localStorage.setItem("nd-cookie", "1"); } catch(e) {}
     setShow(false);
-  };
+  }
   if (!show) return null;
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#041f4a] border-t border-white/10
-                    px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="font-sans text-[12px] text-white/70 flex-1">
-        We use cookies to improve your experience. By reading NajiyaDaily, you agree to our{" "}
-        <Link href="/privacy" className="text-gold underline">Privacy Policy</Link>.
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
+                  background: "#041f4a", borderTop: "1px solid rgba(255,255,255,0.1)",
+                  padding: "12px 20px", display: "flex", alignItems: "center",
+                  justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+      <p style={{ fontFamily: "sans-serif", fontSize: "12px",
+                  color: "rgba(255,255,255,0.7)", flex: 1 }}>
+        We use cookies to improve your experience. By reading NajiyaDaily you agree to our{" "}
+        <Link href="/privacy" style={{ color: "#d4af37" }}>Privacy Policy</Link>.
       </p>
       <button onClick={accept}
-        className="bg-gold text-navy font-sans text-[12px] font-bold px-5 py-2 rounded-sm
-                   hover:opacity-90 transition-opacity whitespace-nowrap">
+        style={{ background: "#d4af37", color: "#052962", fontFamily: "sans-serif",
+                 fontSize: "12px", fontWeight: 500, border: "none", borderRadius: "3px",
+                 padding: "8px 20px", cursor: "pointer", whiteSpace: "nowrap" }}>
         Got it
       </button>
     </div>

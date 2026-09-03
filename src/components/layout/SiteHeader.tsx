@@ -1,117 +1,109 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { NAV_CATEGORIES } from "@/lib/categories";
-import { getCategoryMeta } from "@/lib/categories";
 
-const SITE_URL = "https://www.najiyadaily.com";
+const NAV_ITEMS = [
+  { slug: "world",     label: "World",      className: "" },
+  { slug: "tech",      label: "Tech",        className: "" },
+  { slug: "culture",   label: "Culture",     className: "" },
+  { slug: "science",   label: "Science",     className: "" },
+  { slug: "music",     label: "Music",       className: "" },
+  { slug: "opinion",   label: "Opinion",     className: "" },
+  { slug: "travel",    label: "Travel",      className: "travel" },
+  { slug: "dailypaws", label: "Daily Paws",  className: "paws" },
+];
 
 export function SiteHeader() {
   const [dark, setDark] = useState(false);
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState("--:--");
 
-  useEffect(() => {
-    setDark(localStorage.getItem("nd-dark") === "1");
-    const tick = () => {
+  useEffect(function() {
+    try {
+      setDark(localStorage.getItem("nd-dark") === "1");
+    } catch(e) {}
+
+    function tick() {
       const sl = new Date().toLocaleTimeString("en-US", {
-        timeZone: "Asia/Colombo", hour: "2-digit", minute: "2-digit"
+        timeZone: "Asia/Colombo", hour: "2-digit", minute: "2-digit",
       });
       setTime(sl);
-    };
+    }
     tick();
     const id = setInterval(tick, 30000);
-    return () => clearInterval(id);
+    return function() { clearInterval(id); };
   }, []);
 
-  const toggleDark = () => {
+  function toggleDark() {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("nd-dark", next ? "1" : "0");
-  };
+    try { localStorage.setItem("nd-dark", next ? "1" : "0"); } catch(e) {}
+  }
 
   return (
     <>
-      {/* Ticker */}
-      <div className="bg-[#041f4a] overflow-hidden py-1.5 relative">
-        <span className="absolute left-0 top-0 bottom-0 bg-gold text-navy text-[9px] font-bold tracking-widest uppercase px-3 flex items-center z-10 whitespace-nowrap">
-          LIVE
-        </span>
-        <div className="flex whitespace-nowrap animate-[ticker_50s_linear_infinite] pl-16">
-          {["Real news every day · Morning · Afternoon · Evening",
-            "Travel: Daily destination guides with curated hotel picks",
-            "Daily Paws: Stories and love for your fur babies",
-            "Premium gadget reviews with global buyer sentiment",
-          ].concat([
-            "Real news every day · Morning · Afternoon · Evening",
-            "Travel: Daily destination guides with curated hotel picks",
-            "Daily Paws: Stories and love for your fur babies",
-            "Premium gadget reviews with global buyer sentiment",
-          ]).map((t, i) => (
-            <span key={i} className="text-white/65 text-[11px] font-sans px-7">
-              ● {t}
-            </span>
-          ))}
-        </div>
-      </div>
+      <header style={{ background: "#fff", borderBottom: "1px solid #e2e2de" }}>
+        <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-between" }}>
+          <div style={{ padding: "14px 20px", borderRight: "1px solid #e2e2de",
+                        display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <Link href="/" style={{ textDecoration: "none" }}>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: "26px", fontWeight: 900,
+                            color: "#052962", letterSpacing: "-1px", lineHeight: 1 }}>
+                Najiya<span style={{ color: "#d4af37" }}>Daily</span>
+              </div>
+              <div style={{ fontFamily: "sans-serif", fontSize: "9px", letterSpacing: "2.5px",
+                            textTransform: "uppercase", color: "#b0b0b8", marginTop: "3px" }}>
+                Stories worth your time
+              </div>
+            </Link>
+          </div>
 
-      {/* Main header */}
-      <header className="bg-navy border-b-4 border-gold sticky top-0 z-50">
-        {/* Top row */}
-        <div className="max-w-content mx-auto px-5 flex items-end justify-between py-3 border-b border-white/10">
-          <Link href="/" className="block">
-            <div className="font-serif text-[2.4rem] font-black text-white leading-none tracking-tight">
-              Najiya<span className="text-gold">Daily</span>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "8px 16px", borderBottom: "1px solid #e2e2de",
+                          display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "sans-serif", fontSize: "10px", color: "#7a7a85" }}>
+                Colombo {time} SLT
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%",
+                              background: "#1a9e5a" }}></div>
+                <span style={{ fontFamily: "sans-serif", fontSize: "10px",
+                               fontWeight: 500, color: "#3a3a42" }}>
+                  Edition live
+                </span>
+              </div>
             </div>
-            <div className="font-sans text-[9px] font-normal tracking-[3px] uppercase text-white/40 mt-0.5">
-              Stories Worth Your Time
-            </div>
-          </Link>
-          <div className="flex items-center gap-4 pb-1">
-            <div className="text-right font-sans text-xs text-white/50 hidden md:block">
-              <div>Sri Lanka · {time}</div>
-              <Link href={`mailto:najiyadaily11.11@gmail.com`} className="text-white/40 hover:text-white/70 transition-colors text-[11px]">
-                Contact us
-              </Link>
-            </div>
-            <button
-              onClick={toggleDark}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-content-center transition-colors text-base"
-              aria-label="Toggle dark mode"
-            >
-              {dark ? "☀" : "🌙"}
+            <nav style={{ display: "flex", overflowX: "auto", padding: "0 16px" }}>
+              {NAV_ITEMS.map(function(item) {
+                return (
+                  <Link key={item.slug} href={"/category/" + item.slug}
+                    style={{
+                      fontFamily: "sans-serif", fontSize: "12px", fontWeight: 400,
+                      color: item.className === "travel" ? "#0d6e5e"
+                           : item.className === "paws"   ? "#a0195a"
+                           : "#7a7a85",
+                      padding: "11px 12px 11px 0", marginRight: "6px",
+                      whiteSpace: "nowrap", borderBottom: "2px solid transparent",
+                      display: "block", textDecoration: "none",
+                    }}>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div style={{ width: "140px", padding: "14px 16px", borderLeft: "1px solid #e2e2de",
+                        display: "flex", flexDirection: "column", gap: "10px",
+                        justifyContent: "center" }}>
+            <button onClick={toggleDark}
+              style={{ fontFamily: "sans-serif", fontSize: "11px", color: "#7a7a85",
+                       background: "#f0efec", border: "none", borderRadius: "3px",
+                       padding: "6px 10px", cursor: "pointer" }}>
+              {dark ? "Light mode" : "Dark mode"}
             </button>
           </div>
         </div>
-
-        {/* Navigation */}
-        <nav className="max-w-content mx-auto px-5 flex items-stretch overflow-x-auto scrollbar-none">
-          {NAV_CATEGORIES.map((cat) => {
-            const meta = getCategoryMeta(cat);
-            const isTravel = cat === "Travel";
-            const isPaws   = cat === "Daily-Paws";
-            return (
-              <Link
-                key={cat}
-                href={`/category/${cat.toLowerCase().replace("-","")}`}
-                className="font-sans text-[14px] font-bold py-2.5 pr-4 mr-1 border-b-[3px] border-transparent
-                           hover:border-gold hover:text-white transition-all whitespace-nowrap flex-shrink-0"
-                style={{
-                  color: isTravel ? "#6dd5cf" : isPaws ? "#f9aace" : "rgba(255,255,255,0.75)"
-                }}
-              >
-                {meta.emoji ? `${meta.emoji} ` : ""}{meta.label}
-              </Link>
-            );
-          })}
-          <Link
-            href="/search"
-            className="ml-auto flex items-center font-sans text-[12px] text-white/60 hover:text-white
-                       border border-white/20 hover:border-white/40 rounded px-3 my-2 transition-all whitespace-nowrap"
-          >
-            🔍 Search
-          </Link>
-        </nav>
       </header>
     </>
   );
