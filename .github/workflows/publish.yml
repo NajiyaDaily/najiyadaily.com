@@ -1,0 +1,81 @@
+name: NajiyaDaily Auto Publisher
+
+on:
+  schedule:
+    # Sri Lanka time = UTC+5:30
+    # 8:00 AM SLT  = 2:30 AM UTC  (Morning)
+    # 11:00 AM SLT = 5:30 AM UTC  (Travel)
+    # 1:00 PM SLT  = 7:30 AM UTC  (Afternoon)
+    # 3:00 PM SLT  = 9:30 AM UTC  (Daily Paws)
+    # 7:00 PM SLT  = 1:30 PM UTC  (Evening)
+    - cron: "30 2 * * *"   # Morning
+    - cron: "30 5 * * *"   # Travel
+    - cron: "30 7 * * *"   # Afternoon
+    - cron: "30 9 * * *"   # Daily Paws
+    - cron: "30 13 * * *"  # Evening
+  workflow_dispatch:
+    inputs:
+      edition:
+        description: "morning | travel | afternoon | daily_paws | evening | gadget"
+        required: true
+        default: "morning"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install anthropic requests python-dotenv
+
+      - name: Determine edition
+        id: edition
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.edition }}" >> $GITHUB_OUTPUT
+          else
+            HOUR=$(date -u +%H)
+            MINUTE=$(date -u +%M)
+            if   [ "$HOUR" = "02" ]; then echo "type=morning"    >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "05" ]; then echo "type=travel"     >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "07" ]; then echo "type=afternoon"  >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "09" ]; then echo "type=daily_paws" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "13" ]; then echo "type=evening"    >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Generate and publish article
+        env:
+          ANTHROPIC_API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY:        ${{ secrets.PEXELS_API_KEY }}
+          PEXELS_API_KEY:        ${{ secrets.PEXELS_API_KEY }}
+          UNSPLASH_ACCESS_KEY:   ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          NEWS_API_KEY:          ${{ secrets.NEWS_API_KEY }}
+          AMAZON_AFFILIATE_TAG:  najiyadaily-20
+          SUPABASE_URL:          ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REVALIDATE_SECRET:     ${{ secrets.REVALIDATE_SECRET }}
+          SITE_URL:              https://www.najiyadaily.com
+          EDITION:               ${{ steps.edition.outputs.type }}
+        run: python scripts/nd_publisher.py
+
+      - name: Commit Markdown file
+        run: |
+          git config user.name  "NajiyaDaily Bot"
+          git config user.email "najiyadaily11.11@gmail.com"
+          git add content/
+          git diff --staged --quiet || git commit -m "feat: new article [${{ steps.edition.outputs.type }}] $(date +'%Y-%m-%d %H:%M')"
+          git push
+
+      - name: Trigger Netlify redeploy
+        run: |
+          curl -X POST \
+            "https://www.najiyadaily.com/api/revalidate?secret=${{ secrets.REVALIDATE_SECRET }}" \
+            -H "Content-Type: application/json" || true
