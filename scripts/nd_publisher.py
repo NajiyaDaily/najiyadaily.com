@@ -22,8 +22,8 @@ UNSPLASH_KEY    = os.environ.get("UNSPLASH_ACCESS_KEY", "")
 NEWS_API_KEY    = os.environ.get("NEWS_API_KEY", "")
 AMAZON_TAG      = os.environ.get("AMAZON_AFFILIATE_TAG", "najiyadaily-20")
 
-# Valid production model identifiers: claude-3-7-sonnet-latest or claude-3-5-sonnet-latest
-CLAUDE_MODEL    = "claude-3-7-sonnet-latest"
+# Stable pinned model string to avoid 404 alias issues
+CLAUDE_MODEL    = "claude-3-5-sonnet-20241022"
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_KEY, max_retries=5)
 
@@ -133,7 +133,7 @@ def safe_json_parse(text: str) -> dict:
     if start >= 0 and end >= 0:
         text = text[start:end+1]
 
-    # Clean potential trailing commas in JSON arrays/objects
+    # Clean potential trailing commas
     text = re.sub(r",\s*([}\]])", r"\1", text)
 
     try:
@@ -163,12 +163,12 @@ def safe_json_parse(text: str) -> dict:
     retry_text = retry.content[0].text.strip()
     retry_text = re.sub(r"^```(?:json)?\s*", "", retry_text)
     retry_text = re.sub(r"\s*```\s*$", "", retry_text)
-    
+
     start = retry_text.find("{")
     end   = retry_text.rfind("}")
     if start >= 0 and end >= 0:
         retry_text = retry_text[start:end+1]
-        
+
     retry_text = re.sub(r",\s*([}\]])", r"\1", retry_text)
     return json.loads(retry_text)
 
@@ -285,9 +285,9 @@ def write_markdown(article: dict, slug: str, img_url: str, img_credit: str):
     cat_dir = os.path.join("content", article["category"].lower().replace("-", ""))
     os.makedirs(cat_dir, exist_ok=True)
 
-    # Escape double quotes safely for YAML frontmatter
+    # Escape backslashes and double quotes properly for YAML frontmatter
     def yaml_escape(val: str) -> str:
-        return val.replace('\\', '\\\\').replace('"', r'\"')
+        return str(val).replace('\\', '\\\\').replace('"', r'\"')
 
     title      = yaml_escape(article.get("headline", ""))
     standfirst = yaml_escape(article.get("standfirst", ""))
