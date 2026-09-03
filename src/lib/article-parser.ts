@@ -12,7 +12,7 @@ function extractByClass(html: string, className: string): string | null {
 function extractList(html: string, containerClass: string): string[] {
   const m = html.match(new RegExp(`class=["'][^"']*${containerClass}[^"']*["'][^>]*>(.*?)</(?:div|ul|ol)>`, "is"));
   if (!m) return [];
-  return [...m[1].matchAll(/<li[^>]*>(.*?)<\/li>/gis)].map(
+  return Array.from(m[1].matchAll(/<li[^>]*>(.*?)<\/li>/gis)).map(
     (li) => li[1].replace(/<[^>]+>/g, " ").trim()
   );
 }
