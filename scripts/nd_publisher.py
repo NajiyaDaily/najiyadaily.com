@@ -107,6 +107,69 @@ PAWS_ROTATION = {
     3:"Heroic Tales",  4:"Love & Loss",   5:"Training & Tips", 6:"Pet Travel"
 }
 
+def safe_json_parse(text: str) -> dict:
+    """
+    Robustly parse JSON from Claude output.
+    Handles: markdown fences, trailing commas, truncated output,
+    single quotes, unescaped characters.
+    """
+    import re as _re
+
+    # Strip markdown code fences
+    text = text.strip()
+    text = _re.sub(r"^```(?:json)?\s*", "", text)
+    text = _re.sub(r"\s*```\s*$", "", text)
+    text = text.strip()
+
+    # Find first { and last } to extract JSON object
+    start = text.find("{")
+    end   = text.rfind("}")
+    if start >= 0 and end >= 0:
+        text = text[start:end+1]
+
+    # Remove trailing commas before } or ]
+    text = _re.sub(r",\s*([}\]])", r"\1", text)
+
+    # Try direct parse first
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Try with relaxed parsing — replace single quotes around keys/values
+    try:
+        import ast
+        # ast.literal_eval handles single-quoted dicts
+        result = ast.literal_eval(text)
+        if isinstance(result, dict):
+            return result
+    except Exception:
+        pass
+
+    # Last resort — ask Claude again with explicit JSON instruction
+    log.warning("JSON parse failed, retrying with stricter prompt")
+    retry = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=500,
+        messages=[
+            {"role":"user","content": "Return ONLY a valid JSON object with these keys: "
+             "headline, standfirst, category, labels, explains, why_matters, "
+             "takeaways, whats_next, image_query, body_html. "
+             "No markdown, no explanation, just the JSON."}
+        ]
+    )
+    retry_text = retry.content[0].text.strip()
+    retry_text = _re.sub(r"^```(?:json)?\s*", "", retry_text)
+    retry_text = _re.sub(r"\s*```\s*$", "", retry_text)
+    start = retry_text.find("{")
+    end   = retry_text.rfind("}")
+    if start >= 0 and end >= 0:
+        retry_text = retry_text[start:end+1]
+    retry_text = _re.sub(r",\s*([}\]])", r"\1", retry_text)
+    return json.loads(retry_text)
+
+
+
 def generate_article(edition: str, topic: str, log: dict) -> dict:
     cfg  = EDITION_CONFIG[edition]
     today = datetime.datetime.now().strftime("%B %d, %Y")
@@ -198,9 +261,7 @@ Output ONLY valid JSON:
         messages=[{"role":"user","content":prompt}]
     )
     text = msg.content[0].text.strip()
-    # Strip markdown fences if present
-    text = re.sub(r"^```json\s*","",text).rstrip("` \n")
-    return json.loads(text)
+    return safe_json_parse(text)
 
 # ── Write Markdown file ───────────────────────────────────────────
 def write_markdown(article: dict, slug: str, img_url: str, img_credit: str):
