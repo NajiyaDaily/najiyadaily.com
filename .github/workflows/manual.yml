@@ -4,27 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       morning:
-        description: "Publish Morning Edition"
+        description: "Morning Edition"
         type: boolean
         default: false
       travel:
-        description: "Publish Travel Edition"
+        description: "Travel Edition"
         type: boolean
         default: false
       afternoon:
-        description: "Publish Afternoon Edition"
+        description: "Afternoon Edition"
         type: boolean
         default: false
       daily_paws:
-        description: "Publish Daily Paws"
+        description: "Daily Paws"
         type: boolean
         default: false
       evening:
-        description: "Publish Evening Edition"
+        description: "Evening Edition"
         type: boolean
         default: false
       gadget:
-        description: "Publish Gadget Review"
+        description: "Gadget Review"
         type: boolean
         default: false
 
@@ -40,97 +40,34 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: pip install anthropic requests
+      - run: pip install anthropic requests python-dotenv
 
-      - name: Publish Morning Edition
-        if: ${{ inputs.morning == true }}
+      - name: Run selected editions
         env:
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           PEXELS_API_KEY:       ${{ secrets.PEXELS_API_KEY }}
           UNSPLASH_ACCESS_KEY:  ${{ secrets.UNSPLASH_ACCESS_KEY }}
           NEWS_API_KEY:         ${{ secrets.NEWS_API_KEY }}
+          AMAZON_AFFILIATE_TAG: najiyadaily-20
           SUPABASE_URL:         ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REVALIDATE_SECRET:    ${{ secrets.REVALIDATE_SECRET }}
           SITE_URL:             https://www.najiyadaily.com
-          EDITION:              morning
-        run: python scripts/nd_publisher.py
+        run: |
+          for edition in morning travel afternoon daily_paws evening gadget; do
+            var="INPUT_$(echo $edition | tr '[:lower:]' '[:upper:]')"
+            val="${{ github.event.inputs[edition] }}"
+            if [ "$val" = "true" ]; then
+              echo "Publishing: $edition"
+              EDITION=$edition python scripts/nd_publisher.py
+              sleep 5
+            fi
+          done
 
-      - name: Publish Travel Edition
-        if: ${{ inputs.travel == true }}
-        env:
-          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          PEXELS_API_KEY:       ${{ secrets.PEXELS_API_KEY }}
-          UNSPLASH_ACCESS_KEY:  ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          NEWS_API_KEY:         ${{ secrets.NEWS_API_KEY }}
-          SUPABASE_URL:         ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REVALIDATE_SECRET:    ${{ secrets.REVALIDATE_SECRET }}
-          SITE_URL:             https://www.najiyadaily.com
-          EDITION:              travel
-        run: python scripts/nd_publisher.py
-
-      - name: Publish Afternoon Edition
-        if: ${{ inputs.afternoon == true }}
-        env:
-          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          PEXELS_API_KEY:       ${{ secrets.PEXELS_API_KEY }}
-          UNSPLASH_ACCESS_KEY:  ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          NEWS_API_KEY:         ${{ secrets.NEWS_API_KEY }}
-          SUPABASE_URL:         ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REVALIDATE_SECRET:    ${{ secrets.REVALIDATE_SECRET }}
-          SITE_URL:             https://www.najiyadaily.com
-          EDITION:              afternoon
-        run: python scripts/nd_publisher.py
-
-      - name: Publish Daily Paws
-        if: ${{ inputs.daily_paws == true }}
-        env:
-          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          PEXELS_API_KEY:       ${{ secrets.PEXELS_API_KEY }}
-          UNSPLASH_ACCESS_KEY:  ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          NEWS_API_KEY:         ${{ secrets.NEWS_API_KEY }}
-          SUPABASE_URL:         ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REVALIDATE_SECRET:    ${{ secrets.REVALIDATE_SECRET }}
-          SITE_URL:             https://www.najiyadaily.com
-          EDITION:              daily_paws
-        run: python scripts/nd_publisher.py
-
-      - name: Publish Evening Edition
-        if: ${{ inputs.evening == true }}
-        env:
-          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          PEXELS_API_KEY:       ${{ secrets.PEXELS_API_KEY }}
-          UNSPLASH_ACCESS_KEY:  ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          NEWS_API_KEY:         ${{ secrets.NEWS_API_KEY }}
-          SUPABASE_URL:         ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REVALIDATE_SECRET:    ${{ secrets.REVALIDATE_SECRET }}
-          SITE_URL:             https://www.najiyadaily.com
-          EDITION:              evening
-        run: python scripts/nd_publisher.py
-
-      - name: Publish Gadget Review
-        if: ${{ inputs.gadget == true }}
-        env:
-          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          PEXELS_API_KEY:       ${{ secrets.PEXELS_API_KEY }}
-          UNSPLASH_ACCESS_KEY:  ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          NEWS_API_KEY:         ${{ secrets.NEWS_API_KEY }}
-          SUPABASE_URL:         ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REVALIDATE_SECRET:    ${{ secrets.REVALIDATE_SECRET }}
-          SITE_URL:             https://www.najiyadaily.com
-          EDITION:              gadget
-        run: python scripts/nd_publisher.py
-
-      - name: Commit content files
+      - name: Commit and push content
         run: |
           git config user.name  "NajiyaDaily Bot"
           git config user.email "najiyadaily11.11@gmail.com"
-          git add content/ scripts/ || true
-          git diff --staged --quiet || git commit -m "feat: new article $(date +'%Y-%m-%d %H:%M')"
-          git push || true
+          git add content/ scripts/publish_log.json || true
+          git diff --staged --quiet || git commit -m "feat: manual publish $(date +'%Y-%m-%d %H:%M')"
+          git push
