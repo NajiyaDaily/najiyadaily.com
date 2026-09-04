@@ -452,7 +452,6 @@ def register_supabase(article, slug, img_url, img_credit, wc):
         "why_matters":    article.get("why_matters", "")[:400],
         "takeaways":      article.get("takeaways", [])[:10],
         "whats_next":     article.get("whats_next", [])[:10],
-        "body_html":      article.get("body_html", ""),
     }
 
     for attempt in range(3):
