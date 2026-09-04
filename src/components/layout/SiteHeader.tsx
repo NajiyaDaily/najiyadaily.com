@@ -2,133 +2,184 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const NAV_ITEMS = [
-  { slug: "world",     label: "World",      color: "#7a7a85" },
-  { slug: "tech",      label: "Tech",        color: "#7a7a85" },
-  { slug: "culture",   label: "Culture",     color: "#7a7a85" },
-  { slug: "science",   label: "Science",     color: "#7a7a85" },
-  { slug: "music",     label: "Music",       color: "#7a7a85" },
-  { slug: "opinion",   label: "Opinion",     color: "#7a7a85" },
-  { slug: "travel",    label: "Travel",      color: "#0d6e5e" },
-  { slug: "dailypaws", label: "Daily Paws",  color: "#a0195a" },
+const NAV = [
+  { slug:"world",     label:"World",     color:"" },
+  { slug:"tech",      label:"Tech",      color:"" },
+  { slug:"culture",   label:"Culture",   color:"" },
+  { slug:"science",   label:"Science",   color:"" },
+  { slug:"music",     label:"Music",     color:"" },
+  { slug:"opinion",   label:"Opinion",   color:"" },
+  { slug:"travel",    label:"Travel",    color:"#0d6e5e" },
+  { slug:"dailypaws", label:"Daily Paws",color:"#a0195a" },
 ];
 
 export function SiteHeader() {
-  const [dark, setDark] = useState(false);
-  const [time, setTime] = useState("--:--");
+  const [dark, setDark]     = useState(false);
+  const [time, setTime]     = useState("--:--");
+  const [edition, setEd]    = useState("Loading edition...");
+  const [scrolled, setScr]  = useState(false);
 
-  useEffect(function() {
-    try { setDark(localStorage.getItem("nd-dark") === "1"); } catch(e) {}
-    function tick() {
-      const sl = new Date().toLocaleTimeString("en-US", {
-        timeZone: "Asia/Colombo", hour: "2-digit", minute: "2-digit",
-      });
-      setTime(sl);
-    }
+  useEffect(() => {
+    try { setDark(localStorage.getItem("nd-dark") === "1"); } catch {}
+
+    const tick = () => {
+      const now = new Date();
+      setTime(now.toLocaleTimeString("en-US",
+        { timeZone:"Asia/Colombo", hour:"2-digit", minute:"2-digit" }));
+      // Edition indicator based on SLT time
+      const h = parseInt(now.toLocaleTimeString("en-US",
+        { timeZone:"Asia/Colombo", hour:"2-digit", hour12:false }));
+      if      (h >= 19) setEd("Evening edition");
+      else if (h >= 15) setEd("Daily Paws live");
+      else if (h >= 13) setEd("Afternoon edition");
+      else if (h >= 11) setEd("Travel edition");
+      else if (h >= 8)  setEd("Morning edition");
+      else              setEd("Next edition at 8AM");
+    };
     tick();
     const id = setInterval(tick, 30000);
-    return function() { clearInterval(id); };
+
+    const onScroll = () => setScr(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => { clearInterval(id); window.removeEventListener("scroll", onScroll); };
   }, []);
 
-  function toggleDark() {
+  const toggleDark = () => {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
-    try { localStorage.setItem("nd-dark", next ? "1" : "0"); } catch(e) {}
-  }
+    try { localStorage.setItem("nd-dark", next ? "1" : "0"); } catch {}
+  };
 
   return (
-    <header style={{ background: "#fff", borderBottom: "1px solid #e2e2de" }}>
-      <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-between" }}>
+    <header style={{
+      background:"#fff",
+      borderBottom: scrolled ? "1px solid #dedbd4" : "1px solid #dedbd4",
+      boxShadow: scrolled ? "0 2px 16px rgba(5,41,98,.08)" : "none",
+      position:"sticky", top:0, zIndex:100,
+      transition:"box-shadow .2s",
+    }}>
+      <div style={{ display:"flex", alignItems:"stretch" }}>
 
-        {/* Logo block — navy background as per approved design */}
+        {/* Logo block */}
         <div style={{
-          padding: "14px 20px",
-          borderRight: "1px solid #e2e2de",
-          display: "flex", flexDirection: "column", justifyContent: "center",
-          background: "#052962",
-          minWidth: "200px",
+          background:"#052962",
+          padding:"0 22px",
+          display:"flex", flexDirection:"column", justifyContent:"center",
+          minWidth:"180px", borderRight:"none",
         }}>
-          <Link href="/" style={{ textDecoration: "none" }}>
+          <Link href="/" style={{ textDecoration:"none", display:"block" }}>
+            {/* Logo */}
             <div style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: "28px", fontWeight: 900,
-              letterSpacing: "-1px", lineHeight: 1,
-              display: "flex", alignItems: "baseline",
+              fontFamily:"'Playfair Display', Georgia, serif",
+              fontSize:"26px", fontWeight:900,
+              lineHeight:1, letterSpacing:"-1px",
             }}>
-              <span style={{ color: "#ffffff" }}>Najiya</span>
-              <span style={{ color: "#d4af37" }}>Daily</span>
+              <span style={{ color:"#fff" }}>Najiya</span>
+              <span style={{ color:"#d4af37" }}>Daily</span>
             </div>
+            {/* Gold rule */}
+            <div style={{ height:"2px", background:"#d4af37",
+              margin:"4px 0", width:"100%" }} />
+            {/* Tagline */}
             <div style={{
-              fontFamily: "'DM Sans', system-ui, sans-serif",
-              fontSize: "8px", letterSpacing: "2.5px",
-              textTransform: "uppercase", color: "rgba(255,255,255,0.45)",
-              marginTop: "4px",
+              fontFamily:"'DM Sans', system-ui, sans-serif",
+              fontSize:"8px", letterSpacing:"2.5px",
+              textTransform:"uppercase",
+              color:"rgba(255,255,255,.4)",
             }}>
               Stories Worth Your Time
             </div>
           </Link>
         </div>
 
-        {/* Middle — date bar + nav */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Centre — date bar + nav */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
+          {/* Top bar */}
           <div style={{
-            padding: "8px 16px", borderBottom: "1px solid #e2e2de",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding:"5px 18px",
+            borderBottom:"1px solid #eceae5",
+            display:"flex", alignItems:"center",
+            justifyContent:"space-between",
+            background:"#fafaf8",
           }}>
-            <span style={{ fontFamily: "system-ui", fontSize: "10px", color: "#7a7a85", letterSpacing: ".3px" }}>
-              Colombo {time} SLT
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1a9e5a" }} />
-              <span style={{ fontFamily: "system-ui", fontSize: "10px", fontWeight: 500, color: "#3a3a42" }}>
-                Edition live
+            <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
+              <span style={{ fontFamily:"var(--sans)", fontSize:"10px",
+                color:"#a8a8b2" }}>
+                Colombo · {time} SLT
               </span>
+              <div style={{ display:"flex", alignItems:"center", gap:"5px" }}>
+                <div style={{ width:"5px", height:"5px", borderRadius:"50%",
+                  background:"#1a9e5a",
+                  boxShadow:"0 0 0 2px rgba(26,158,90,.2)" }} />
+                <span style={{ fontFamily:"var(--sans)", fontSize:"10px",
+                  fontWeight:500, color:"#3a3a42" }}>
+                  {edition}
+                </span>
+              </div>
             </div>
+            <button onClick={toggleDark} style={{
+              fontFamily:"var(--sans)", fontSize:"10px",
+              color:"#a8a8b2", background:"none", border:"none",
+              cursor:"pointer", padding:"2px 6px",
+            }}>
+              {dark ? "☀ Light" : "🌙 Dark"}
+            </button>
           </div>
 
-          <nav style={{ display: "flex", overflowX: "auto", padding: "0 16px", alignItems: "center" }}>
-            {NAV_ITEMS.map(function(item) {
-              return (
-                <Link key={item.slug}
-                  href={"/category/" + item.slug}
-                  style={{
-                    fontFamily: "'DM Sans', system-ui, sans-serif",
-                    fontSize: "12px", fontWeight: item.color !== "#7a7a85" ? 500 : 400,
-                    color: item.color,
-                    padding: "11px 12px 11px 0", marginRight: "6px",
-                    whiteSpace: "nowrap", borderBottom: "2px solid transparent",
-                    display: "block", textDecoration: "none",
-                  }}>
-                  {item.label}
-                </Link>
-              );
-            })}
+          {/* Navigation */}
+          <nav style={{
+            display:"flex", alignItems:"center",
+            padding:"0 18px", overflowX:"auto",
+            gap:0,
+          }}>
+            {NAV.map(item => (
+              <Link key={item.slug}
+                href={`/category/${item.slug}`}
+                style={{
+                  fontFamily:"var(--sans)", fontSize:"12.5px",
+                  fontWeight: item.color ? 600 : 400,
+                  color: item.color || "#6b6b78",
+                  padding:"12px 12px 12px 0",
+                  marginRight:"8px",
+                  whiteSpace:"nowrap",
+                  borderBottom:"2px solid transparent",
+                  display:"block",
+                  transition:"color .15s, border-color .15s",
+                  textDecoration:"none",
+                }}>
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
 
-        {/* Right — dark mode */}
+        {/* Right actions */}
         <div style={{
-          width: "140px", padding: "14px 16px",
-          borderLeft: "1px solid #e2e2de",
-          display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center",
+          width:"130px", flexShrink:0,
+          borderLeft:"1px solid #eceae5",
+          display:"flex", flexDirection:"column",
+          justifyContent:"center", gap:"8px",
+          padding:"12px 14px",
         }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: "5px",
-            border: "1px solid #e2e2de", borderRadius: "4px",
-            padding: "5px 8px", background: "#f0efec",
+          <Link href="/search" style={{
+            fontFamily:"var(--sans)", fontSize:"11px",
+            color:"#6b6b78", display:"flex", alignItems:"center",
+            gap:"5px", textDecoration:"none",
+            border:"1px solid #eceae5", borderRadius:"3px",
+            padding:"5px 8px", background:"#fafaf8",
           }}>
-            <span style={{ fontFamily: "system-ui", fontSize: "10px", color: "#b0b0b8" }}>Search</span>
-          </div>
-          <button onClick={toggleDark} style={{
-            fontFamily: "system-ui", fontSize: "10px", color: "#7a7a85",
-            background: "#f0efec", border: "none", borderRadius: "3px",
-            padding: "5px 8px", cursor: "pointer", textAlign: "center",
+            <span>🔍</span> Search
+          </Link>
+          <Link href="/admin" style={{
+            fontFamily:"var(--sans)", fontSize:"10px",
+            color:"#a8a8b2", textAlign:"center",
+            textDecoration:"none",
           }}>
-            {dark ? "Light mode" : "Dark mode"}
-          </button>
+            Admin ›
+          </Link>
         </div>
-
       </div>
     </header>
   );

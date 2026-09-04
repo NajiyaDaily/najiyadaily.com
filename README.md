@@ -1,71 +1,76 @@
-# NajiyaDaily — Next.js Frontend
+# NajiyaDaily — Production Frontend
 
-Production frontend for https://www.najiyadaily.com
-Content sourced from Blogger API (Blog ID: 6392874604663604321)
+Live site: https://www.najiyadaily.com  
+Stack: Next.js 14 · Supabase · Netlify · GitHub Actions · Claude AI
 
-## Setup
+---
+
+## Architecture
+
+```
+GitHub Actions (schedule 5x daily)
+  → nd_publisher.py (generates article via Claude)
+  → Supabase (stores article as draft)
+  → Admin reviews at najiyadaily.com/admin
+  → Publishes → live on homepage instantly
+```
+
+## Environment Variables (Netlify dashboard)
+
+```
+NEXT_PUBLIC_SITE_URL          = https://www.najiyadaily.com
+NEXT_PUBLIC_SUPABASE_URL      = https://vnysdevtdowrrjoendrw.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY = [your anon key]
+SUPABASE_SERVICE_ROLE_KEY     = [your service role key]
+ADMIN_SECRET                  = [your admin password]
+REVALIDATE_SECRET             = nd2026secret
+NEXT_PUBLIC_BOOKING_PARTNER_ID = 101867344
+NEXT_PUBLIC_AMAZON_TAG        = najiyadaily-20
+```
+
+## GitHub Secrets (repo Settings → Secrets → Actions)
+
+```
+ANTHROPIC_API_KEY
+NEXT_PUBLIC_SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+REVALIDATE_SECRET
+PEXELS_API_KEY
+UNSPLASH_ACCESS_KEY
+NEWS_API_KEY
+```
+
+## Publishing
+
+**Manual:** GitHub → Actions → NajiyaDaily Manual Publisher → Run workflow → tick edition
+
+**Auto schedule (Sri Lanka time):**
+- 8:00 AM  → Morning edition
+- 11:00 AM → Travel edition  
+- 1:00 PM  → Afternoon edition
+- 3:00 PM  → Daily Paws
+- 7:00 PM  → Evening edition
+
+**Admin dashboard:** najiyadaily.com/admin (password: ADMIN_SECRET env var)
+
+## Local development
 
 ```bash
 npm install
-cp .env.local.example .env.local
-# Fill in .env.local with your keys
+cp .env.local.example .env.local  # fill in your keys
 npm run dev
 ```
 
-## Deploy to Vercel
+## Deploy
 
-1. Push this repo to GitHub
-2. Go to vercel.com → Import Project → select repo
-3. Add environment variables in Vercel dashboard:
-   - `BLOGGER_API_KEY` — from Google Cloud Console
-   - `BLOGGER_BLOG_ID` — 6392874604663604321
-   - `NEXT_PUBLIC_SITE_URL` — https://www.najiyadaily.com
-   - `NEXT_PUBLIC_BOOKING_PARTNER_ID` — 101867344
-   - `NEXT_PUBLIC_AMAZON_TAG` — najiyadaily-20
-   - `REVALIDATE_SECRET` — any random string
-4. Set custom domain: www.najiyadaily.com
+Push to GitHub → Netlify auto-deploys.
+Articles publish to Supabase directly — no Netlify rebuild needed per article.
+Commit messages include [skip ci] to preserve free build minutes.
 
-## Connect domain (Namecheap → Vercel)
+## Monetisation
 
-In Namecheap DNS, REPLACE the Blogger CNAME records with:
-- CNAME: www → cname.vercel-dns.com
-- A: @ → 76.76.21.21
-
-In Vercel → Project → Settings → Domains → add www.najiyadaily.com
-
-## On-demand revalidation (after GitHub Actions publish)
-
-Add to GitHub Actions workflows after publish step:
-```yaml
-- name: Revalidate site
-  run: |
-    curl -X POST "https://www.najiyadaily.com/api/revalidate?secret=${{ secrets.REVALIDATE_SECRET }}"
-```
-
-## File structure
-
-```
-src/
-  app/
-    page.tsx              # Homepage — Guardian grid
-    layout.tsx            # Root layout — header/footer/meta
-    sitemap.ts            # Auto-generated XML sitemap
-    robots.ts             # robots.txt
-    posts/[slug]/page.tsx # Article pages with all 7 components
-    category/[slug]/page.tsx # Category listing pages
-    api/revalidate/route.ts  # ISR revalidation webhook
-  components/
-    layout/SiteHeader.tsx    # Nav, ticker, dark mode
-    layout/SiteFooter.tsx    # Footer, legal, affiliates
-    article/FloatingShare.tsx # Sticky share buttons
-    article/RelatedArticles.tsx # 3-col related posts
-    ui/ProgressBar.tsx       # Reading progress bar
-    ui/StickySubscribe.tsx   # Email capture at 40% scroll
-    ui/CookieNotice.tsx      # GDPR cookie notice
-  lib/
-    blogger.ts           # Blogger API v3 + JSON feed ingestion
-    article-parser.ts    # Extracts NajiyaDaily signature components
-    categories.ts        # Category config, colours, nav
-    seo.ts               # Meta, JSON-LD, breadcrumbs
-  types/index.ts         # TypeScript interfaces
-```
+- Amazon Associates: najiyadaily-20
+- Booking.com: partner ID 101867344  
+- Skimlinks: 307914X1796208
+- AdSense: apply after 25+ articles
+- Journey by Mediavine: apply at 1,000 monthly sessions

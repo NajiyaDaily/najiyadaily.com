@@ -1,0 +1,12 @@
+{
+  "name": "NajiyaDaily",
+  "short_name": "NajiyaDaily",
+  "description": "Stories Worth Your Time",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#052962",
+  "theme_color": "#052962",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

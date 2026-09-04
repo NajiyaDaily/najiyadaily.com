@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#052962" rx="4"/>
+  <text x="2" y="22" font-family="Georgia,serif" font-weight="900" font-size="14" fill="#ffffff">N</text>
+  <text x="14" y="22" font-family="Georgia,serif" font-weight="900" font-size="14" fill="#d4af37">D</text>
+  <line x1="2" y1="25" x2="30" y2="25" stroke="#d4af37" stroke-width="1.5"/>
+</svg>
