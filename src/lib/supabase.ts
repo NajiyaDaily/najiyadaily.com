@@ -29,4 +29,5 @@ export type ArticleRow = {
   why_matters:    string | null;
   takeaways:      string[];
   whats_next:     string[];
+  body_html:      string | null;
 };
