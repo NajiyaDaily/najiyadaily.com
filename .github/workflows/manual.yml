@@ -127,10 +127,21 @@ jobs:
           EDITION:              gadget
         run: python scripts/nd_publisher.py
 
-      - name: Commit content files
+      # ── Smart commit — only push if content files actually changed ──
+      # This prevents Netlify from triggering a rebuild on every publish.
+      # Netlify only rebuilds when src/ or config files change.
+      # Articles go straight to Supabase — no rebuild needed.
+      - name: Commit content files (no-trigger)
         run: |
           git config user.name  "NajiyaDaily Bot"
           git config user.email "najiyadaily11.11@gmail.com"
-          git add content/ scripts/ || true
-          git diff --staged --quiet || git commit -m "feat: new article $(date +'%Y-%m-%d %H:%M')"
-          git push || true
+          git add content/ scripts/publish_log.json || true
+
+          # Only commit if something actually changed
+          if git diff --staged --quiet; then
+            echo "Nothing changed — skipping commit"
+          else
+            # [skip ci] tells Netlify to ignore this commit — no rebuild triggered
+            git commit -m "chore: article content update [skip ci]"
+            git push || true
+          fi
