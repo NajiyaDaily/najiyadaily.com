@@ -43,6 +43,16 @@ function CatBar({ label, size = 14 }: { label: string; size?: number }) {
         letterSpacing:"1px", textTransform:"uppercase", color:c.color }}>
         {fmtLabel(label)}
       </span>
+
+      {/* Scroll fade-in animations */}
+      <script dangerouslySetInnerHTML={{ __html: `
+(function(){
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('nd-visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.nd-fade-up').forEach(function(el){ obs.observe(el); });
+})();
+      `}}/>
     </div>
   );
 }
