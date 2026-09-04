@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { getCategoryMeta, getPrimaryLabel } from "@/lib/categories";
 
 export const revalidate = 300;
@@ -11,7 +11,7 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.najiyadaily.com";
 type Props = { params: { slug: string } };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { data } = await supabaseAdmin
+  const { data } = await supabase
     .from("articles").select("title,excerpt,standfirst,featured_image,slug,published_at,labels")
     .eq("slug", params.slug).maybeSingle();
   if (!data) return { title: "Not Found" };
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArticlePage({ params }: Props) {
   // Select * so we get whatever columns exist — no crashes on missing columns
-  const { data: post, error } = await supabaseAdmin
+  const { data: post, error } = await supabase
     .from("articles")
     .select("*")
     .eq("slug", params.slug)
@@ -101,7 +101,7 @@ export default async function ArticlePage({ params }: Props) {
           {post.standfirst && (
             <p style={{ fontFamily:"var(--serif)", fontStyle:"italic", fontSize:"1.08rem",
               lineHeight:1.65, color:"rgba(255,255,255,.88)", marginBottom:"22px" }}>
-              {post.standfirst}
+              {post.standfirst.replace(/<[^>]+>/g, "")}
             </p>
           )}
 
